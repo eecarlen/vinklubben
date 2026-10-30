@@ -20,7 +20,14 @@ img.th{width:44px;height:44px;object-fit:cover;border-radius:6px;vertical-align:
 .it{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--ln);cursor:pointer}.it>div{flex:1;min-width:0}
 .chip{font-size:12px;background:var(--ac);color:var(--acf);border-radius:10px;padding:2px 8px;white-space:nowrap}
 </style></head><body><div id="app">Laddar…</div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
 <script>
+// 1) Klistra in din Firebase-konfiguration här (Project settings → Your apps → Web app)
+const FIREBASE_CONFIG={apiKey:"AIzaSyA4N-ojO4me7oVOAICOzsiBVl9UeIbBrDk",authDomain:"vinklubben-e30e6.firebaseapp.com",projectId:"vinklubben-e30e6",storageBucket:"vinklubben-e30e6.firebasestorage.app",messagingSenderId:"1094292878356",appId:"1:1094292878356:web:a6f5c73d7620cd02a1e301"};
+// 2) true = bilder i Firebase Storage. false = bilder sparas förminskade direkt i Firestore (ingen Storage behövs).
+const USE_STORAGE=false;
 const $=s=>document.querySelector(s),app=$('#app');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rid=()=>Math.random().toString(36).slice(2,8);
@@ -38,9 +45,13 @@ const nt=x=>typeof x==='string'?{o:x}:(x||{});
 const fmt=o=>{o=nt(o);return[['u','Utseende'],['d','Doft'],['s','Smak'],['o','Övrigt']].filter(([k])=>o[k]).map(([k,l])=>l+': '+o[k]).join(' · ')};
 function isAdmin(){return ls.get('role')==='host'}
 function setRole(r){ls.set('role',r);if(!r)ls.set('nm','');route()}
+async function uploadImg(blob){
+ if(USE_STORAGE){const r=firebase.storage().ref('vin/'+Date.now()+'_'+rid()+'.jpg');await r.put(blob,{contentType:'image/jpeg'});return {url:await r.getDownloadURL()}}
+ return {url:await new Promise(res=>{const f=new FileReader();f.onload=()=>res(f.result);f.readAsDataURL(blob)})}}
 async function init(){
- try{db=await claude.use('db');assets=await claude.use('assets');user=await claude.use('user')}catch{}
- if(!db){app.innerHTML=hdr()+'<div class="card">Delad lagring är inte tillgänglig. Öppna sidan via länken i claude.ai.</div>';return}
+ if(!FIREBASE_CONFIG.apiKey||FIREBASE_CONFIG.apiKey.startsWith('DIN')){app.innerHTML=hdr()+'<div class="card">Fyll i FIREBASE_CONFIG högst upp i filen först.</div>';return}
+ try{firebase.initializeApp(FIREBASE_CONFIG);db=firebase.firestore();assets={upload:uploadImg}}
+ catch(e){app.innerHTML=hdr()+'<div class="card">Kunde inte ansluta till Firebase: '+esc(e.message||e)+'</div>';return}
  admin=isAdmin();route();addEventListener('hashchange',route)}
 function route(){unsubs.forEach(u=>{try{u()}catch{}});unsubs=[];admin=isAdmin();const h=location.hash.slice(1);
  if(!ls.get('role')){app.innerHTML=`<div style="padding:36px 0 10px;text-align:center"><div style="font-size:48px">🍷</div><h2>Blindprovning</h2><p class="mut">Hur vill du delta?</p></div><div class="card"><button style="width:100%;padding:16px" onclick="setRole('host')">Jag är host</button><p class="mut">Skapar provningar, drar nummer och avslöjar resultat.</p></div><div class="card"><button class="s" style="width:100%;padding:16px" onclick="setRole('guest')">Jag är gäst</button><p class="mut">Lägger in sitt vin och röstar.</p></div>`;return}

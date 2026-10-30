@@ -52,6 +52,7 @@ async function init(){
  if(!FIREBASE_CONFIG.apiKey||FIREBASE_CONFIG.apiKey.startsWith('DIN')){app.innerHTML=hdr()+'<div class="card">Fyll i FIREBASE_CONFIG högst upp i filen först.</div>';return}
  try{firebase.initializeApp(FIREBASE_CONFIG);db=firebase.firestore();assets={upload:uploadImg}}
  catch(e){app.innerHTML=hdr()+'<div class="card">Kunde inte ansluta till Firebase: '+esc(e.message||e)+'</div>';return}
+ if(!location.hash.slice(1)){ls.set('role','');ls.set('nm','')}
  admin=isAdmin();route();addEventListener('hashchange',route)}
 function route(){unsubs.forEach(u=>{try{u()}catch{}});unsubs=[];admin=isAdmin();const h=location.hash.slice(1);
  if(!ls.get('role')){app.innerHTML=`<div style="padding:36px 0 10px;text-align:center"><div style="font-size:48px">🍷</div><h2>Blindprovning</h2><p class="mut">Hur vill du delta?</p></div><div class="card"><button style="width:100%;padding:16px" onclick="setRole('host')">Jag är host</button><p class="mut">Skapar provningar, drar nummer och avslöjar resultat.</p></div><div class="card"><button class="s" style="width:100%;padding:16px" onclick="setRole('guest')">Jag är gäst</button><p class="mut">Lägger in sitt vin och röstar.</p></div>`;return}

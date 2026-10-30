@@ -99,7 +99,7 @@ function tasting(id){
  const build=()=>{const b=$('#b'),st=T.status;
   let h=`<div class="card"><h2>${esc(T.name)}</h2><div class="mut">${esc(T.date||'')} · ${T.type==='mix'?'Mixprovning: '+COL[T.c1]+' först, sedan '+COL[T.c2].toLowerCase():'Vanlig provning'}</div></div>`;
   if(st==='reg'){
-   if(admin)h+=`<div class="card"><h3 style="margin-top:0">Delningslänk</h3><input readonly value="${esc(location.href)}" onclick="this.select()"><p class="mut">Skicka länken till deltagarna.</p><div id="wl"></div><p><button id="lock">Lås registreringen och dra nummer</button></p></div>`;
+   if(admin)h+=`<div class="card"><h3 style="margin-top:0">Länk till deltagarna</h3><input readonly value="${esc(location.origin+location.pathname)}" onclick="this.select()"><p class="mut">Alla öppnar samma länk, väljer gäst och sitt namn, och hittar provningen i listan.</p><div id="wl"></div><p><button id="lock">Lås registreringen och dra nummer</button></p></div>`;
    h+=`<div class="card"><h2>Lägg till vin</h2><p class="mut">Du lägger in vin som <b>${esc(me())}</b>.</p><p class="ok" id="ws"></p><div id="form"></div></div>`;
    b.innerHTML=h;if(admin)$('#lock').onclick=lock;if(loaded)form();
   }else if(st==='tasting'){

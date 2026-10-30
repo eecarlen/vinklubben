@@ -1,4 +1,4 @@
-<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Blindprovning</title>
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Vinklubben</title>
 <style>
 :root{--bg:#faf7f5;--fg:#2a1f22;--mut:#7a6b6f;--card:#fff;--ln:#e6dcdf;--ac:#7b1e3a;--acf:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#1b1416;--fg:#f1e8ea;--mut:#a8979c;--card:#261c1f;--ln:#3d2f33;--ac:#d4617f;--acf:#1b1416}}
@@ -20,6 +20,7 @@ img.th{width:44px;height:44px;object-fit:cover;border-radius:6px;vertical-align:
 .it{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--ln);cursor:pointer}.it>div{flex:1;min-width:0}
 .chip{font-size:12px;background:var(--ac);color:var(--acf);border-radius:10px;padding:2px 8px;white-space:nowrap}
 </style></head><body><div id="app">Laddar…</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
@@ -38,7 +39,7 @@ const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math
 const safeUrl=u=>/^https?:\/\//i.test(u||'')?u:'';
 const link=u=>safeUrl(u)?`<a href="${esc(safeUrl(u))}" target="_blank" rel="noopener">Systembolaget</a>`:'';
 let db,assets,user,admin=false,unsubs=[];
-const hdr=()=>`<header><b>🍷 Blindprovning</b><a href="#" onclick="setRole('');location.hash='';return false">Hem</a><a href="#arkiv">Arkiv</a></header>`;
+const hdr=()=>`<header><b>🍷 Vinklubben</b><a href="#" onclick="setRole('');location.hash='';return false">Hem</a><a href="#arkiv">Arkiv</a></header>`;
 function PV(){try{return sessionStorage.getItem('prev')}catch{}}
 function prev(v){try{v?sessionStorage.setItem('prev','1'):sessionStorage.removeItem('prev')}catch{}route()}
 const nt=x=>typeof x==='string'?{o:x}:(x||{});
@@ -55,7 +56,7 @@ async function init(){
  if(!location.hash.slice(1)){ls.set('role','');ls.set('nm','')}
  admin=isAdmin();route();addEventListener('hashchange',route)}
 function route(){unsubs.forEach(u=>{try{u()}catch{}});unsubs=[];admin=isAdmin();const h=location.hash.slice(1);
- if(!ls.get('role')){app.innerHTML=`<div style="padding:36px 0 10px;text-align:center"><div style="font-size:48px">🍷</div><h2>Blindprovning</h2><p class="mut">Hur vill du delta?</p></div><div class="card"><button style="width:100%;padding:16px" onclick="setRole('host')">Jag är host</button><p class="mut">Skapar provningar, drar nummer och avslöjar resultat.</p></div><div class="card"><button class="s" style="width:100%;padding:16px" onclick="setRole('guest')">Jag är gäst</button><p class="mut">Lägger in sitt vin och röstar.</p></div>`;return}
+ if(!ls.get('role')){app.innerHTML=`<div style="padding:36px 0 10px;text-align:center"><div style="font-size:48px">🍷</div><h2>Vinklubben</h2><p class="mut">Hur vill du delta?</p></div><div class="card"><button style="width:100%;padding:16px" onclick="setRole('host')">Jag är host</button><p class="mut">Skapar provningar, drar nummer och avslöjar resultat.</p></div><div class="card"><button class="s" style="width:100%;padding:16px" onclick="setRole('guest')">Jag är gäst</button><p class="mut">Lägger in sitt vin och röstar.</p></div>`;return}
  if(!ls.get('nm')){app.innerHTML=`<div style="padding:30px 0 10px;text-align:center"><h2>Vem är du?</h2></div><div class="card">`+NAMES.map(n=>`<button class="s" style="width:100%;margin:4px 0;padding:14px" onclick="setName('${n}')">${n}</button>`).join('')+`</div><p class="mut" style="text-align:center"><a href="#" onclick="setRole('');return false">Tillbaka</a></p>`;return}
  if(h==='arkiv')archive();else if(h)tasting(h);else home()}
 
@@ -158,16 +159,19 @@ function tasting(id){
 function archive(){
  app.innerHTML=hdr()+`<div class="card"><input id="q" placeholder="Sök vinnamn"><div class="row" style="margin-top:8px"><select id="fg"></select><select id="ft"></select></div><div class="row" style="margin-top:8px"><select id="fc"></select><select id="fr"></select></div>
  <div class="row" style="margin-top:8px"><input id="pa" type="number" placeholder="Pris från"><input id="pb" type="number" placeholder="Pris till"></div>
- <div class="row" style="margin-top:8px"><select id="so"><option value="new">Sortera: Nyast</option><option value="rank">Placering</option><option value="pa">Pris ↑</option><option value="pd">Pris ↓</option><option value="vin">Årgång</option><option value="gr">Druva</option><option value="nm">Namn</option></select></div></div><div id="ls" class="card mut">Laddar…</div>`;
- let A=[],open=null;const val=(k)=>[...new Set(A.map(a=>a[k]).filter(Boolean))].sort();
+ <div class="row" style="margin-top:8px"><select id="so"><option value="new">Sortera: Nyast</option><option value="rank">Placering</option><option value="pa">Pris ↑</option><option value="pd">Pris ↓</option><option value="vin">Årgång</option><option value="gr">Druva</option><option value="nm">Namn</option></select><button id="xl" class="s" style="flex:0;white-space:nowrap">Exportera till Excel</button></div></div><div id="ls" class="card mut">Laddar…</div>`;
+ let A=[],open=null,cur=[];const val=(k)=>[...new Set(A.map(a=>a[k]).filter(Boolean))].sort();
  const sel=(id,l,vals,lab)=>{const e=$(id),c=e.value;e.innerHTML=`<option value="">${l}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(lab?lab(v):v)}</option>`).join('');e.value=c};
  const render=()=>{const q=$('#q').value.toLowerCase(),g=$('#fg').value,t=$('#ft').value,c=$('#fc').value,r=$('#fr').value,pa=parseFloat($('#pa').value),pb=parseFloat($('#pb').value);
   let l=A.filter(a=>(!q||a.name.toLowerCase().includes(q))&&(!g||a.grape===g)&&(!t||a.tasting===t)&&(!c||a.color===c)&&(!r||a.region===r)&&(isNaN(pa)||+a.price>=pa)&&(isNaN(pb)||+a.price<=pb));
   const s=$('#so').value,n=x=>parseFloat(x)||0;
-  l.sort({new:(a,b)=>(b.date||'').localeCompare(a.date||''),rank:(a,b)=>a.rank-b.rank,pa:(a,b)=>n(a.price)-n(b.price),pd:(a,b)=>n(b.price)-n(a.price),vin:(a,b)=>n(b.vintage)-n(a.vintage),gr:(a,b)=>(a.grape||'').localeCompare(b.grape||''),nm:(a,b)=>a.name.localeCompare(b.name)}[s]);
+  l.sort({new:(a,b)=>(b.date||'').localeCompare(a.date||''),rank:(a,b)=>a.rank-b.rank,pa:(a,b)=>n(a.price)-n(b.price),pd:(a,b)=>n(b.price)-n(a.price),vin:(a,b)=>n(b.vintage)-n(a.vintage),gr:(a,b)=>(a.grape||'').localeCompare(b.grape||''),nm:(a,b)=>a.name.localeCompare(b.name)}[s]);cur=l;
   $('#ls').innerHTML=l.length?l.map(a=>`<div data-id="${a.id}"><div class="it">${a.img?`<img class="th" src="${esc(a.img)}">`:'<div class="th"></div>'}<div><b>${esc(a.name)}</b><div class="mut">${esc([a.producer,a.grape,a.vintage].filter(Boolean).join(' · '))}</div></div><span class="chip">#${a.rank}${a.tie?'=':''} · ${a.pts}p</span></div>${open===a.id?`<div style="padding:8px 0">${a.img?`<img class="big" src="${esc(a.img)}">`:''}<div>Pris: ${esc(a.price||'–')} kr · ${COL[a.color]||''} · ${esc(a.region||'')}</div><div>Placering ${a.rank}${a.tie?' (delad)':''}, ${a.pts} poäng</div><div class="mut">${esc(a.tasting)} ${esc(a.date)}</div>${(a.notes||[]).map(x=>`<div>“${esc(x)}”</div>`).join('')}<div>${link(a.link)}</div>${admin?`<button class="s sm" onclick="delA('${a.id}')">Ta bort från arkivet</button>`:''}</div>`:''}</div>`).join(''):'Inga viner i arkivet ännu.'};
  ['q','fg','ft','fc','fr','pa','pb','so'].forEach(i=>$('#'+i).oninput=render);
  $('#ls').onclick=e=>{const it=e.target.closest('.it');if(!it||e.target.closest('a'))return;const id=it.parentElement.dataset.id;open=open===id?null:id;render()};
+ $('#xl').onclick=()=>{if(!window.XLSX)return alert('Excel-biblioteket kunde inte laddas.');
+ const rows=cur.map(a=>({Provning:a.tasting,Datum:a.date,Vin:a.name,Producent:a.producer,Druva:a.grape,'Land/region':a.region,Årgång:a.vintage,Pris:a.price===''?'':(+a.price||a.price),Färg:COL[a.color]||'','Tog med':a.by,Placering:a.rank+(a.tie?'=':''),Poäng:a.pts,Anteckningar:(a.notes||[]).join(' | '),Systembolaget:a.link}));
+ const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Arkiv');XLSX.writeFile(wb,'vinklubben-arkiv.xlsx')};
  unsubs.push(db.collection('archive').onSnapshot(s=>{A=s.docs.map(d=>({id:d.id,...d.data()}));sel('#fg','Alla druvor',val('grape'));sel('#ft','Alla provningar',val('tasting'));sel('#fc','Alla färger',Object.keys(COL).filter(k=>A.some(a=>a.color===k)),k=>COL[k]);sel('#fr','Alla regioner',val('region'));render()}))}
 async function delT(id){if(!await ask('Ta bort provningen med alla viner och röster? Det går inte att ångra.'))return;try{const t=db.doc('tastings/'+id);for(const c of['wines','votes']){const s=await t.collection(c).get();await Promise.all(s.docs.map(d=>t.collection(c).doc(d.id).delete()))}const a=await db.collection('archive').get();await Promise.all(a.docs.filter(d=>d.data().tid===id).map(d=>db.doc('archive/'+d.id).delete()));await t.delete()}catch(e){alert('Misslyckades: '+(e.message||e))}}
 async function delW(t,w){if(!await ask('Ta bort vinet?'))return;try{await db.doc('tastings/'+t+'/wines/'+w).delete()}catch(e){alert('Misslyckades: '+(e.message||e))}}
